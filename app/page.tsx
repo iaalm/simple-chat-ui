@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 
 interface Message {
@@ -38,7 +38,7 @@ export default function Home() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [models, setModels] = useState<Model[]>([]);
-  const [selectedModel, setSelectedModel] = useState<string>('');
+  const [selectedModel, setSelectedModel] = useState<string>("")
   const [isLoadingModels, setIsLoadingModels] = useState(true);
   const [apiKey, setApiKey] = useState('');
   const [extraParams, setExtraParams] = useState<ExtraParameter[]>(parseExtraParameters());
@@ -52,6 +52,10 @@ export default function Home() {
     if (apiKeyFromUrl) {
       setApiKey(apiKeyFromUrl);
     }
+    const model = searchParams.get('model');
+    if (model) {
+      setSelectedModel(model);
+    }
   }, []);
 
   const scrollToBottom = () => {
@@ -62,12 +66,7 @@ export default function Home() {
     scrollToBottom();
   }, [messages]);
 
-  // Fetch available models on component mount
-  useEffect(() => {
-    fetchModels();
-  }, []);
-
-  const fetchModels = async () => {
+  const fetchModels = useCallback(async () => {
     try {
       const response = await fetch('/v1/models');
       if (!response.ok) {
@@ -75,16 +74,24 @@ export default function Home() {
       }
       const data = await response.json();
       setModels(data.data || []);
-      // Select the first available model
+      // Only set model if not set or current model doesn't exist in list
       if (data.data && data.data.length > 0) {
-        setSelectedModel(data.data[0].id);
+        const modelIds = data.data.map((model: Model) => model.id);
+        if (!selectedModel || !modelIds.includes(selectedModel)) {
+          setSelectedModel(data.data[0].id);
+        }
       }
     } catch (error) {
       console.error('Error fetching models:', error);
     } finally {
       setIsLoadingModels(false);
     }
-  };
+  }, [selectedModel]);
+
+  // Fetch available models on component mount
+  useEffect(() => {
+    fetchModels();
+  }, [fetchModels]);
 
   const sendMessage = async () => {
     if (!input.trim() || isLoading) return;

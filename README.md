@@ -34,6 +34,18 @@ NEXT_PUBLIC_API_BASE="https://localhost:5000"
 NEXT_PUBLIC_EXTRA_PARAMETERS="Max Tokens:max_tokens=100;Temperature:temperature=0.7"
 ```
 
+## URL Parameters
+
+You can configure the chat interface using URL parameters:
+
+- `key`: Set your API key directly in the URL (e.g., `?key=your-api-key`)
+- `model`: Pre-select a specific model (e.g., `?model=model-name`)
+
+Example URL with parameters:
+```
+http://localhost:3000?key=your-api-key&model=model-name
+```
+
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
 ## Learn More
