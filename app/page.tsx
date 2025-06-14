@@ -194,35 +194,6 @@ export default function Home() {
           
           {/* Controls */}
           <div className="flex flex-wrap items-center gap-2 sm:gap-4">
-            {/* Clear Messages Button */}
-            <button
-              onClick={clearMessages}
-              disabled={isLoading || messages.length === 0}
-              className="px-2 py-1 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400 border border-gray-300 dark:border-gray-600 rounded-md hover:border-red-300 dark:hover:border-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-              title="Clear all messages"
-            >
-              <svg className="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-              <span className="hidden sm:inline ml-1">Clear Chat</span>
-            </button>
-
-            {/* API Key Input */}
-            <div className="flex items-center gap-2">
-              <label htmlFor="api-key" className="text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
-                API Key:
-              </label>
-              <input
-                id="api-key"
-                type="password"
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                placeholder="API key"
-                className="px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent w-32 sm:w-40"
-                disabled={isLoading}
-              />
-            </div>
-
             {/* Model Selector */}
             <div className="flex items-center gap-2">
               <label htmlFor="model-select" className="text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
@@ -257,6 +228,22 @@ export default function Home() {
               </button>
             </div>
 
+            {/* API Key Input */}
+            <div className="flex items-center gap-2">
+              <label htmlFor="api-key" className="text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
+                API Key:
+              </label>
+              <input
+                id="api-key"
+                type="password"
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                placeholder="API key"
+                className="px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent w-32 sm:w-40"
+                disabled={isLoading}
+              />
+            </div>
+
             {/* Extra Parameters Menu */}
             <div className="relative">
               <button
@@ -272,22 +259,22 @@ export default function Home() {
               </button>
 
               {isParamMenuOpen && (
-                <div className="absolute right-0 mt-2 w-96 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-4 z-50">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Extra Parameters</h3>
+                <div className="absolute right-0 mt-2 w-72 sm:w-96 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-4 sm:p-5 z-50">
+                  <div className="flex justify-between items-center mb-4 sm:mb-5">
+                    <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">Extra Parameters</h3>
                     <button
                       onClick={() => setIsParamMenuOpen(false)}
                       className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
                     >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                       </svg>
                     </button>
                   </div>
-                  <div className="space-y-4">
+                  <div className="space-y-4 sm:space-y-5">
                     {extraParams.map((param, index) => (
-                      <div key={index} className="flex items-center gap-4">
-                        <label className="w-32 text-sm font-medium text-gray-700 dark:text-gray-300">
+                      <div key={index} className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+                        <label className="w-full sm:w-28 text-sm font-medium text-gray-700 dark:text-gray-300">
                           {param.displayName}:
                         </label>
                         <input
@@ -298,7 +285,7 @@ export default function Home() {
                             newParams[index] = { ...param, value: e.target.value };
                             setExtraParams(newParams);
                           }}
-                          className="flex-1 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          className="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           placeholder={`Enter ${param.displayName}`}
                         />
                       </div>
@@ -307,6 +294,19 @@ export default function Home() {
                 </div>
               )}
             </div>
+
+            {/* Clear Messages Button */}
+            <button
+              onClick={clearMessages}
+              disabled={isLoading || messages.length === 0}
+              className="px-2 py-1 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400 border border-gray-300 dark:border-gray-600 rounded-md hover:border-red-300 dark:hover:border-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+              title="Clear all messages"
+            >
+              <svg className="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              <span className="hidden sm:inline ml-1">Clear Chat</span>
+            </button>
           </div>
         </div>
       </header>
@@ -390,7 +390,7 @@ export default function Home() {
                 <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
               ) : (
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path d="M14.4376 15.3703L12.3042 19.5292C11.9326 20.2537 10.8971 20.254 10.525 19.5297L4.24059 7.2971C3.81571 6.47007 4.65077 5.56156 5.51061 5.91537L18.5216 11.2692C19.2984 11.5889 19.3588 12.6658 18.6227 13.0704L14.4376 15.3703ZM14.4376 15.3703L5.09594 6.90886" stroke="#ffffff" strokeWidth="2" stroke-linecap="round"/>
+                  <path d="M14.4376 15.3703L12.3042 19.5292C11.9326 20.2537 10.8971 20.254 10.525 19.5297L4.24059 7.2971C3.81571 6.47007 4.65077 5.56156 5.51061 5.91537L18.5216 11.2692C19.2984 11.5889 19.3588 12.6658 18.6227 13.0704L14.4376 15.3703ZM14.4376 15.3703L5.09594 6.90886" stroke="#ffffff" strokeWidth="2" strokeLinecap="round"/>
                 </svg>
               )}
               <span className="hidden sm:inline">Send</span>
