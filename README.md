@@ -30,6 +30,8 @@ Create a `.env.local` file in the root directory and add your custom values:
 ```bash
 NEXT_PUBLIC_TITLE="My Custom Chat Bot"
 NEXT_PUBLIC_DESCRIPTION="A custom description for my chat bot"
+NEXT_PUBLIC_API_BASE="https://localhost:5000"
+NEXT_PUBLIC_EXTRA_PARAMETERS="Max Tokens:max_tokens=100;Temperature:temperature=0.7"
 ```
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
