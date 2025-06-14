@@ -18,6 +18,20 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
+## Environment Variables
+
+You can customize the chat bot's appearance by setting the following environment variables:
+
+- `NEXT_PUBLIC_TITLE`: The title of the chat bot (defaults to "Chat bot")
+- `NEXT_PUBLIC_DESCRIPTION`: The description of the chat bot (defaults to "The chat bot")
+
+Create a `.env.local` file in the root directory and add your custom values:
+
+```bash
+NEXT_PUBLIC_TITLE="My Custom Chat Bot"
+NEXT_PUBLIC_DESCRIPTION="A custom description for my chat bot"
+```
+
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
 ## Learn More
