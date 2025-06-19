@@ -24,3 +24,46 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Custom styles for remark-gfm tables */
+.prose table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1rem 0;
+}
+
+.prose table th,
+.prose table td {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #e5e7eb;
+  text-align: left;
+}
+
+.prose table th {
+  background-color: #f9fafb;
+  font-weight: 600;
+}
+
+/* Dark mode support for tables */
+.dark .prose table th,
+.dark .prose table td {
+  border-color: #374151;
+}
+
+.dark .prose table th {
+  background-color: #374151;
+}
+
+/* Ensure tables are responsive */
+.prose table {
+  overflow-x: auto;
+  display: block;
+  white-space: nowrap;
+}
+
+@media (min-width: 640px) {
+  .prose table {
+    display: table;
+    white-space: normal;
+  }
+}

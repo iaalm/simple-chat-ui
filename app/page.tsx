@@ -3,25 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-
-interface Message {
-  role: 'user' | 'assistant';
-  content: string;
-  reasoning?: string;
-}
-
-interface Model {
-  id: string;
-  object: string;
-  created?: number;
-  owned_by?: string;
-}
-
-interface ExtraParameter {
-  displayName: string;
-  paramName: string;
-  value: string;
-}
+import { Message, Model, ExtraParameter } from './types';
 
 // Parse parameters from environment variable
 const parseExtraParameters = (): ExtraParameter[] => {
