@@ -44,14 +44,16 @@ body {
   font-weight: 600;
 }
 
-/* Dark mode support for tables */
-.dark .prose table th,
-.dark .prose table td {
-  border-color: #374151;
-}
+/* Dark mode support for tables using media query */
+@media (prefers-color-scheme: dark) {
+  .prose table th,
+  .prose table td {
+    border-color: #374151;
+  }
 
-.dark .prose table th {
-  background-color: #374151;
+  .prose table th {
+    background-color: #374151;
+  }
 }
 
 /* Ensure tables are responsive */
