@@ -347,7 +347,7 @@ export default function Home() {
             </div>
 
             {/* Extra Parameters Menu */}
-            <div className="relative">
+            {extraParams.length > 0 && <div className="relative">
               <button
                 onClick={() => setIsParamMenuOpen(!isParamMenuOpen)}
                 className="px-2 py-1 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 border border-gray-300 dark:border-gray-600 rounded-md hover:border-blue-300 dark:hover:border-blue-600 transition-colors duration-200 disabled:opacity-50"
@@ -397,7 +397,7 @@ export default function Home() {
                   </div>
                 </div>
               )}
-            </div>
+            </div>}
 
             {/* Clear Messages Button */}
             <button
