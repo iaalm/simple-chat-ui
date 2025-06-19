@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -466,7 +467,7 @@ export default function Home() {
                           🤔 Thinking:
                         </div>
                         <div className="text-sm text-gray-600 dark:text-gray-400 font-mono">
-                        <ReactMarkdown>{message.reasoning}</ReactMarkdown>
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.reasoning}</ReactMarkdown>
                         </div>
                       </div>
                     )}
@@ -478,7 +479,7 @@ export default function Home() {
 
                     {/* Main content */}
                     {message.content && (
-                      <ReactMarkdown>{message.content}</ReactMarkdown>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
                     )}
                   </div>
                 )}
