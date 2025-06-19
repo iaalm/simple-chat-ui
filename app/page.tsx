@@ -434,7 +434,7 @@ export default function Home() {
           {messages.map((message, index) => (
             <div
               key={index}
-              className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+              className={`message flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
             >
               <div
                 className={`px-4 py-2 rounded-lg ${
@@ -449,7 +449,7 @@ export default function Home() {
                   <div className="prose dark:prose-invert max-w-none">
                     {/* Reasoning content */}
                     {message.reasoning && (
-                      <div className="mt-3 p-3 bg-gray-100 dark:bg-gray-700 rounded-lg border-l-4 border-blue-500">
+                      <div className="reasoning mt-3 p-3 bg-gray-100 dark:bg-gray-700 rounded-lg border-l-4 border-blue-500">
                         <div className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">
                           🤔 Thinking:
                         </div>
