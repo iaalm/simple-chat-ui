@@ -466,7 +466,7 @@ export default function Home() {
                           🤔 Thinking:
                         </div>
                         <div className="text-sm text-gray-600 dark:text-gray-400 font-mono">
-                          {message.reasoning}
+                        <ReactMarkdown>{message.reasoning}</ReactMarkdown>
                         </div>
                       </div>
                     )}
