@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Message, Model, ExtraParameter } from './types';
+import { mockMessages } from './mockData';
 
 // Parse parameters from environment variable
 const parseExtraParameters = (): ExtraParameter[] => {
@@ -43,6 +44,10 @@ export default function Home() {
     const model = searchParams.get('model');
     if (model) {
       setSelectedModel(model);
+    }
+
+    if (process.env.NODE_ENV == 'development') {
+      setMessages(mockMessages);
     }
   }, []);
 
@@ -412,7 +417,7 @@ export default function Home() {
 
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto px-4 py-6">
-        <div className="max-w-3xl mx-auto space-y-6">
+        <div className="mx-auto space-y-6">
           {messages.length === 0 && (
             <div className="text-center text-gray-500 dark:text-gray-400 mt-20">
               <div className="text-4xl mb-4">💬</div>
@@ -432,7 +437,7 @@ export default function Home() {
               className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
             >
               <div
-                className={`max-w-xs lg:max-w-md xl:max-w-lg px-4 py-2 rounded-lg ${
+                className={`px-4 py-2 rounded-lg ${
                   message.role === 'user'
                     ? 'bg-blue-500 text-white'
                     : 'bg-white dark:bg-gray-800 text-gray-800 dark:text-white border border-gray-200 dark:border-gray-700'
