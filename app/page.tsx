@@ -6,6 +6,9 @@ import ReactMarkdown from 'react-markdown';
 interface Message {
   role: 'user' | 'assistant';
   content: string;
+  reasoning?: string;
+  tool_calls?: any[];
+  function_call?: any;
 }
 
 interface Model {
@@ -37,6 +40,7 @@ export default function Home() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
   const [models, setModels] = useState<Model[]>([]);
   const [selectedModel, setSelectedModel] = useState<string>("")
   const [isLoadingModels, setIsLoadingModels] = useState(true);
@@ -44,6 +48,9 @@ export default function Home() {
   const [extraParams, setExtraParams] = useState<ExtraParameter[]>(parseExtraParameters());
   const [isParamMenuOpen, setIsParamMenuOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Check if streaming is enabled
+  const isStreamingEnabled = process.env.NEXT_PUBLIC_STREAM === 'true';
 
   // Read API key from URL on component mount
   useEffect(() => {
@@ -94,12 +101,22 @@ export default function Home() {
   }, [fetchModels]);
 
   const sendMessage = async () => {
-    if (!input.trim() || isLoading) return;
+    if (!input.trim() || isLoading || isStreaming) return;
 
     const userMessage: Message = { role: 'user', content: input };
     setMessages(prev => [...prev, userMessage]);
     setInput('');
     setIsLoading(true);
+    
+    // Check if streaming is enabled
+    const isStreamingEnabled = process.env.NEXT_PUBLIC_STREAM === 'true';
+    
+    if (isStreamingEnabled) {
+      setIsStreaming(true);
+      // Add an empty assistant message that we'll update as we stream
+      const assistantMessage: Message = { role: 'assistant', content: '' };
+      setMessages(prev => [...prev, assistantMessage]);
+    }
 
     try {
       const headers: HeadersInit = {
@@ -115,12 +132,14 @@ export default function Home() {
         ...acc,
         [param.paramName]: param.value
       }), {});
+
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE || ''}/v1/chat/completions`, {
         method: 'POST',
         headers,
         body: JSON.stringify({
           model: selectedModel,
           messages: [...messages, userMessage],
+          stream: isStreamingEnabled, // Enable streaming only if configured
           ...extraParamsBody
         }),
       });
@@ -149,30 +168,177 @@ export default function Home() {
           errorMessage = `HTTP error! status: ${response.status}`;
         }
         
-        const assistantErrorMessage: Message = {
-          role: 'assistant',
-          content: errorMessage,
-        };
-        setMessages(prev => [...prev, assistantErrorMessage]);
+        if (isStreamingEnabled) {
+          // Update the assistant message with the error
+          setMessages(prev => {
+            const newMessages = [...prev];
+            newMessages[newMessages.length - 1] = {
+              role: 'assistant',
+              content: errorMessage,
+            };
+            return newMessages;
+          });
+        } else {
+          // Add error message for non-streaming
+          const assistantErrorMessage: Message = {
+            role: 'assistant',
+            content: errorMessage,
+          };
+          setMessages(prev => [...prev, assistantErrorMessage]);
+        }
         return;
       }
 
-      const data = await response.json();
-      const assistantMessage: Message = {
-        role: 'assistant',
-        content: data.choices[0].message.content,
-      };
+      if (isStreamingEnabled) {
+        // Handle streaming response
+        const reader = response.body?.getReader();
+        const decoder = new TextDecoder();
+        let accumulatedContent = '';
+        let accumulatedReasoning = '';
+        let accumulatedToolCalls: any[] = [];
+        let accumulatedFunctionCall: any = null;
 
-      setMessages(prev => [...prev, assistantMessage]);
+        if (reader) {
+          try {
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+
+              const chunk = decoder.decode(value);
+              const lines = chunk.split('\n');
+
+              for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                  const data = line.slice(6);
+                  
+                  if (data === '[DONE]') {
+                    // Stream finished
+                    break;
+                  }
+
+                  try {
+                    const parsed = JSON.parse(data);
+                    const delta = parsed.choices?.[0]?.delta;
+                    
+                    if (delta) {
+                      // Handle content streaming
+                      if (delta.content) {
+                        accumulatedContent += delta.content;
+                      }
+                      
+                      // Handle reasoning streaming (if supported by the model)
+                      if (delta.reasoning) {
+                        accumulatedReasoning += delta.reasoning;
+                      }
+                      
+                      // Handle tool calls streaming
+                      if (delta.tool_calls) {
+                        for (const toolCall of delta.tool_calls) {
+                          const existingIndex = accumulatedToolCalls.findIndex(tc => tc.index === toolCall.index);
+                          if (existingIndex >= 0) {
+                            // Update existing tool call
+                            if (toolCall.function) {
+                              if (!accumulatedToolCalls[existingIndex].function) {
+                                accumulatedToolCalls[existingIndex].function = { name: '', arguments: '' };
+                              }
+                              if (toolCall.function.name) {
+                                accumulatedToolCalls[existingIndex].function.name += toolCall.function.name;
+                              }
+                              if (toolCall.function.arguments) {
+                                accumulatedToolCalls[existingIndex].function.arguments += toolCall.function.arguments;
+                              }
+                            }
+                            if (toolCall.id) {
+                              accumulatedToolCalls[existingIndex].id = toolCall.id;
+                            }
+                          } else {
+                            // Add new tool call
+                            accumulatedToolCalls.push({
+                              index: toolCall.index,
+                              id: toolCall.id || '',
+                              type: toolCall.type || 'function',
+                              function: toolCall.function ? {
+                                name: toolCall.function.name || '',
+                                arguments: toolCall.function.arguments || ''
+                              } : undefined
+                            });
+                          }
+                        }
+                      }
+                      
+                      // Handle function call streaming (legacy format)
+                      if (delta.function_call) {
+                        if (!accumulatedFunctionCall) {
+                          accumulatedFunctionCall = { name: '', arguments: '' };
+                        }
+                        if (delta.function_call.name) {
+                          accumulatedFunctionCall.name += delta.function_call.name;
+                        }
+                        if (delta.function_call.arguments) {
+                          accumulatedFunctionCall.arguments += delta.function_call.arguments;
+                        }
+                      }
+                      
+                      // Update the assistant message with all accumulated content
+                      setMessages(prev => {
+                        const newMessages = [...prev];
+                        newMessages[newMessages.length - 1] = {
+                          role: 'assistant',
+                          content: accumulatedContent,
+                          reasoning: accumulatedReasoning || undefined,
+                          tool_calls: accumulatedToolCalls.length > 0 ? accumulatedToolCalls : undefined,
+                          function_call: accumulatedFunctionCall || undefined,
+                        };
+                        return newMessages;
+                      });
+                    }
+                  } catch (e) {
+                    // Ignore parsing errors for malformed JSON
+                    console.warn('Failed to parse streaming data:', e);
+                  }
+                }
+              }
+            }
+          } finally {
+            reader.releaseLock();
+          }
+        }
+      } else {
+        // Handle non-streaming response
+        const data = await response.json();
+        const assistantMessage: Message = {
+          role: 'assistant',
+          content: data.choices[0].message.content,
+          reasoning: data.choices[0].message.reasoning,
+          tool_calls: data.choices[0].message.tool_calls,
+          function_call: data.choices[0].message.function_call,
+        };
+
+        setMessages(prev => [...prev, assistantMessage]);
+      }
     } catch (error) {
       console.error('Error calling chat API:', error);
       const errorMessage: Message = {
         role: 'assistant',
         content: 'Sorry, I encountered a network error while processing your request. Please check your connection and try again.',
       };
-      setMessages(prev => [...prev, errorMessage]);
+      
+      if (isStreamingEnabled) {
+        // Update the assistant message with the error
+        setMessages(prev => {
+          const newMessages = [...prev];
+          newMessages[newMessages.length - 1] = errorMessage;
+          return newMessages;
+        });
+      } else {
+        // Add error message for non-streaming
+        setMessages(prev => [...prev, errorMessage]);
+      }
     } finally {
       setIsLoading(false);
+      if (isStreamingEnabled) {
+        setIsStreaming(false);
+      }
     }
   };
 
@@ -211,7 +377,7 @@ export default function Home() {
                   value={selectedModel}
                   onChange={(e) => setSelectedModel(e.target.value)}
                   className="px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 sm:w-32"
-                  disabled={isLoading}
+                  disabled={isLoading || (isStreamingEnabled && isStreaming)}
                 >
                   {models.map((model) => (
                     <option key={model.id} value={model.id}>
@@ -222,7 +388,7 @@ export default function Home() {
               )}
               <button
                 onClick={fetchModels}
-                disabled={isLoadingModels}
+                disabled={isLoadingModels || isLoading || (isStreamingEnabled && isStreaming)}
                 className="p-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 disabled:opacity-50"
                 title="Refresh models"
               >
@@ -244,7 +410,7 @@ export default function Home() {
                 onChange={(e) => setApiKey(e.target.value)}
                 placeholder="API key"
                 className="px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent w-32 sm:w-40"
-                disabled={isLoading}
+                disabled={isLoading || (isStreamingEnabled && isStreaming)}
               />
             </div>
 
@@ -252,8 +418,9 @@ export default function Home() {
             <div className="relative">
               <button
                 onClick={() => setIsParamMenuOpen(!isParamMenuOpen)}
-                className="px-2 py-1 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 border border-gray-300 dark:border-gray-600 rounded-md hover:border-blue-300 dark:hover:border-blue-600 transition-colors duration-200"
+                className="px-2 py-1 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 border border-gray-300 dark:border-gray-600 rounded-md hover:border-blue-300 dark:hover:border-blue-600 transition-colors duration-200 disabled:opacity-50"
                 title="Extra Parameters"
+                disabled={isLoading || (isStreamingEnabled && isStreaming)}
               >
                 <svg className="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -291,6 +458,7 @@ export default function Home() {
                           }}
                           className="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           placeholder={`Enter ${param.displayName}`}
+                          disabled={isLoading || (isStreamingEnabled && isStreaming)}
                         />
                       </div>
                     ))}
@@ -302,7 +470,7 @@ export default function Home() {
             {/* Clear Messages Button */}
             <button
               onClick={clearMessages}
-              disabled={isLoading || messages.length === 0}
+              disabled={isLoading || (isStreamingEnabled && isStreaming) || messages.length === 0}
               className="px-2 py-1 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400 border border-gray-300 dark:border-gray-600 rounded-md hover:border-red-300 dark:hover:border-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
               title="Clear all messages"
             >
@@ -347,14 +515,84 @@ export default function Home() {
                   <div className="whitespace-pre-wrap">{message.content}</div>
                 ) : (
                   <div className="prose dark:prose-invert max-w-none">
-                    <ReactMarkdown>{message.content}</ReactMarkdown>
+                    {/* Main content */}
+                    {message.content && (
+                      <ReactMarkdown>{message.content}</ReactMarkdown>
+                    )}
+                    
+                    {/* Reasoning content */}
+                    {message.reasoning && (
+                      <div className="mt-3 p-3 bg-gray-100 dark:bg-gray-700 rounded-lg border-l-4 border-blue-500">
+                        <div className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                          🤔 Reasoning:
+                        </div>
+                        <div className="text-sm text-gray-600 dark:text-gray-400 font-mono">
+                          {message.reasoning}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Tool calls */}
+                    {message.tool_calls && message.tool_calls.length > 0 && (
+                      <div className="mt-3 space-y-2">
+                        {message.tool_calls.map((toolCall, toolIndex) => (
+                          <div key={toolIndex} className="p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border-l-4 border-yellow-500">
+                            <div className="text-sm font-semibold text-yellow-700 dark:text-yellow-300 mb-1">
+                              🔧 Tool Call {toolCall.index + 1}:
+                            </div>
+                            {toolCall.function && (
+                              <div className="text-sm">
+                                <div className="font-mono text-yellow-600 dark:text-yellow-400">
+                                  Function: {toolCall.function.name}
+                                </div>
+                                {toolCall.function.arguments && (
+                                  <div className="mt-1">
+                                    <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Arguments:</div>
+                                    <pre className="text-xs bg-gray-100 dark:bg-gray-800 p-2 rounded overflow-x-auto">
+                                      {toolCall.function.arguments}
+                                    </pre>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    
+                    {/* Function call (legacy format) */}
+                    {message.function_call && (
+                      <div className="mt-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border-l-4 border-yellow-500">
+                        <div className="text-sm font-semibold text-yellow-700 dark:text-yellow-300 mb-1">
+                          🔧 Function Call:
+                        </div>
+                        <div className="text-sm">
+                          <div className="font-mono text-yellow-600 dark:text-yellow-400">
+                            Function: {message.function_call.name}
+                          </div>
+                          {message.function_call.arguments && (
+                            <div className="mt-1">
+                              <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Arguments:</div>
+                              <pre className="text-xs bg-gray-100 dark:bg-gray-800 p-2 rounded overflow-x-auto">
+                                {message.function_call.arguments}
+                              </pre>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Streaming cursor */}
+                    {isStreamingEnabled && isStreaming && index === messages.length - 1 && (
+                      <span className="inline-block w-2 h-4 bg-blue-500 ml-1 animate-pulse"></span>
+                    )}
                   </div>
                 )}
               </div>
             </div>
           ))}
           
-          {isLoading && (
+          {isLoading && !(isStreamingEnabled && isStreaming) && (
             <div className="flex justify-start">
               <div className="bg-white dark:bg-gray-800 text-gray-800 dark:text-white border border-gray-200 dark:border-gray-700 px-4 py-2 rounded-lg max-w-xs lg:max-w-md xl:max-w-lg">
                 <div className="flex space-x-1">
@@ -378,26 +616,28 @@ export default function Home() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyPress={handleKeyPress}
-                placeholder="Type your message here..."
+                placeholder={isStreamingEnabled && isStreaming ? "AI is responding..." : "Type your message here..."}
                 className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
                 rows={1}
                 style={{ minHeight: '44px', maxHeight: '120px' }}
-                disabled={isLoading}
+                disabled={isLoading || (isStreamingEnabled && isStreaming)}
               />
             </div>
             <button
               onClick={sendMessage}
-              disabled={!input.trim() || isLoading}
+              disabled={!input.trim() || isLoading || (isStreamingEnabled && isStreaming)}
               className="px-6 py-3 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors duration-200 flex items-center space-x-2"
             >
-              {isLoading ? (
+              {isLoading || (isStreamingEnabled && isStreaming) ? (
                 <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
               ) : (
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path d="M14.4376 15.3703L12.3042 19.5292C11.9326 20.2537 10.8971 20.254 10.525 19.5297L4.24059 7.2971C3.81571 6.47007 4.65077 5.56156 5.51061 5.91537L18.5216 11.2692C19.2984 11.5889 19.3588 12.6658 18.6227 13.0704L14.4376 15.3703ZM14.4376 15.3703L5.09594 6.90886" stroke="#ffffff" strokeWidth="2" strokeLinecap="round"/>
                 </svg>
               )}
-              <span className="hidden sm:inline">Send</span>
+              <span className="hidden sm:inline">
+                {isStreamingEnabled && isStreaming ? 'Streaming...' : 'Send'}
+              </span>
             </button>
           </div>
         </div>
