@@ -40,7 +40,31 @@ const mockMessages: Message[] = [
 | George | 33  | Miami | george@email.com | 555-0109 | 369 Willow Pl | Research Lab | Scientist | 95000 | Research |
 | Helen | 26  | Portland | helen@email.com | 555-0110 | 741 Aspen Blvd | Support Team | Coordinator | 60000 | Customer Service |
 
-This is a simple table with three columns: Name, Age, and City. The table shows data for three people with their respective ages and cities.`
+This is a simple table with three columns: Name, Age, and City. The table shows data for three people with their respective ages and cities.
+
+## code block
+
+\`\`\`
+cd ..
+python -m pip install pandas[plotting]
+\`\`\`
+
+# H1 title
+
+## H2 title
+
+### H3 title
+
+#### H4 title
+
+##### H5 title
+
+## check list
+
+- [X] install pandas
+- [ ] install matplotlib
+- [ ] install seaborn
+`
     },
 ]
 
