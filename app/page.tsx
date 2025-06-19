@@ -7,8 +7,6 @@ interface Message {
   role: 'user' | 'assistant';
   content: string;
   reasoning?: string;
-  tool_calls?: any[];
-  function_call?: any;
 }
 
 interface Model {
@@ -195,8 +193,6 @@ export default function Home() {
         const decoder = new TextDecoder();
         let accumulatedContent = '';
         let accumulatedReasoning = '';
-        let accumulatedToolCalls: any[] = [];
-        let accumulatedFunctionCall: any = null;
 
         if (reader) {
           try {
@@ -231,54 +227,6 @@ export default function Home() {
                         accumulatedReasoning += delta.reasoning;
                       }
                       
-                      // Handle tool calls streaming
-                      if (delta.tool_calls) {
-                        for (const toolCall of delta.tool_calls) {
-                          const existingIndex = accumulatedToolCalls.findIndex(tc => tc.index === toolCall.index);
-                          if (existingIndex >= 0) {
-                            // Update existing tool call
-                            if (toolCall.function) {
-                              if (!accumulatedToolCalls[existingIndex].function) {
-                                accumulatedToolCalls[existingIndex].function = { name: '', arguments: '' };
-                              }
-                              if (toolCall.function.name) {
-                                accumulatedToolCalls[existingIndex].function.name += toolCall.function.name;
-                              }
-                              if (toolCall.function.arguments) {
-                                accumulatedToolCalls[existingIndex].function.arguments += toolCall.function.arguments;
-                              }
-                            }
-                            if (toolCall.id) {
-                              accumulatedToolCalls[existingIndex].id = toolCall.id;
-                            }
-                          } else {
-                            // Add new tool call
-                            accumulatedToolCalls.push({
-                              index: toolCall.index,
-                              id: toolCall.id || '',
-                              type: toolCall.type || 'function',
-                              function: toolCall.function ? {
-                                name: toolCall.function.name || '',
-                                arguments: toolCall.function.arguments || ''
-                              } : undefined
-                            });
-                          }
-                        }
-                      }
-                      
-                      // Handle function call streaming (legacy format)
-                      if (delta.function_call) {
-                        if (!accumulatedFunctionCall) {
-                          accumulatedFunctionCall = { name: '', arguments: '' };
-                        }
-                        if (delta.function_call.name) {
-                          accumulatedFunctionCall.name += delta.function_call.name;
-                        }
-                        if (delta.function_call.arguments) {
-                          accumulatedFunctionCall.arguments += delta.function_call.arguments;
-                        }
-                      }
-                      
                       // Update the assistant message with all accumulated content
                       setMessages(prev => {
                         const newMessages = [...prev];
@@ -286,8 +234,6 @@ export default function Home() {
                           role: 'assistant',
                           content: accumulatedContent,
                           reasoning: accumulatedReasoning || undefined,
-                          tool_calls: accumulatedToolCalls.length > 0 ? accumulatedToolCalls : undefined,
-                          function_call: accumulatedFunctionCall || undefined,
                         };
                         return newMessages;
                       });
@@ -310,8 +256,6 @@ export default function Home() {
           role: 'assistant',
           content: data.choices[0].message.content,
           reasoning: data.choices[0].message.reasoning,
-          tool_calls: data.choices[0].message.tool_calls,
-          function_call: data.choices[0].message.function_call,
         };
 
         setMessages(prev => [...prev, assistantMessage]);
@@ -515,16 +459,11 @@ export default function Home() {
                   <div className="whitespace-pre-wrap">{message.content}</div>
                 ) : (
                   <div className="prose dark:prose-invert max-w-none">
-                    {/* Main content */}
-                    {message.content && (
-                      <ReactMarkdown>{message.content}</ReactMarkdown>
-                    )}
-                    
                     {/* Reasoning content */}
                     {message.reasoning && (
                       <div className="mt-3 p-3 bg-gray-100 dark:bg-gray-700 rounded-lg border-l-4 border-blue-500">
                         <div className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                          🤔 Reasoning:
+                          🤔 Thinking:
                         </div>
                         <div className="text-sm text-gray-600 dark:text-gray-400 font-mono">
                           {message.reasoning}
@@ -532,59 +471,14 @@ export default function Home() {
                       </div>
                     )}
                     
-                    {/* Tool calls */}
-                    {message.tool_calls && message.tool_calls.length > 0 && (
-                      <div className="mt-3 space-y-2">
-                        {message.tool_calls.map((toolCall, toolIndex) => (
-                          <div key={toolIndex} className="p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border-l-4 border-yellow-500">
-                            <div className="text-sm font-semibold text-yellow-700 dark:text-yellow-300 mb-1">
-                              🔧 Tool Call {toolCall.index + 1}:
-                            </div>
-                            {toolCall.function && (
-                              <div className="text-sm">
-                                <div className="font-mono text-yellow-600 dark:text-yellow-400">
-                                  Function: {toolCall.function.name}
-                                </div>
-                                {toolCall.function.arguments && (
-                                  <div className="mt-1">
-                                    <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Arguments:</div>
-                                    <pre className="text-xs bg-gray-100 dark:bg-gray-800 p-2 rounded overflow-x-auto">
-                                      {toolCall.function.arguments}
-                                    </pre>
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    
-                    {/* Function call (legacy format) */}
-                    {message.function_call && (
-                      <div className="mt-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border-l-4 border-yellow-500">
-                        <div className="text-sm font-semibold text-yellow-700 dark:text-yellow-300 mb-1">
-                          🔧 Function Call:
-                        </div>
-                        <div className="text-sm">
-                          <div className="font-mono text-yellow-600 dark:text-yellow-400">
-                            Function: {message.function_call.name}
-                          </div>
-                          {message.function_call.arguments && (
-                            <div className="mt-1">
-                              <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Arguments:</div>
-                              <pre className="text-xs bg-gray-100 dark:bg-gray-800 p-2 rounded overflow-x-auto">
-                                {message.function_call.arguments}
-                              </pre>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                    
                     {/* Streaming cursor */}
                     {isStreamingEnabled && isStreaming && index === messages.length - 1 && (
                       <span className="inline-block w-2 h-4 bg-blue-500 ml-1 animate-pulse"></span>
+                    )}
+
+                    {/* Main content */}
+                    {message.content && (
+                      <ReactMarkdown>{message.content}</ReactMarkdown>
                     )}
                   </div>
                 )}
