@@ -5,6 +5,13 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Message, Model, ExtraParameter } from './types';
 import { mockMessages } from './mockData';
+import { 
+  isOIDCConfigured, 
+  generateAuthUrl, 
+  getAccessToken, 
+  logout as logoutOIDC,
+  handleOIDCCallback
+} from './oidc';
 
 // Generate a random GUID
 const generateGuid = (): string => {
@@ -38,14 +45,52 @@ export default function Home() {
   const [apiKey, setApiKey] = useState('');
   const [extraParams, setExtraParams] = useState<ExtraParameter[]>(parseExtraParameters());
   const [isParamMenuOpen, setIsParamMenuOpen] = useState(false);
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Check if OIDC is configured
+  const oidcEnabled = isOIDCConfigured();
 
   // Check if streaming is enabled
   const isStreamingEnabled = process.env.NEXT_PUBLIC_STREAM === 'true';
 
-  // Read API key from URL on component mount
+  // Read API key from URL and handle OIDC callback on component mount
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
+    
+    // Handle OIDC callback
+    const code = searchParams.get('code');
+    const state = searchParams.get('state');
+    const error = searchParams.get('error');
+    
+    if (code && state && oidcEnabled) {
+      // Handle OIDC callback
+      const handleCallback = async () => {
+        setIsAuthenticating(true);
+        setAuthError(null);
+        
+        try {
+          await handleOIDCCallback(code, state);
+          // Clear URL parameters after successful authentication
+          const newUrl = new URL(window.location.href);
+          newUrl.searchParams.delete('code');
+          newUrl.searchParams.delete('state');
+          window.history.replaceState({}, '', newUrl.toString());
+        } catch (err) {
+          console.error('OIDC callback error:', err);
+          setAuthError(err instanceof Error ? err.message : 'Authentication failed');
+        } finally {
+          setIsAuthenticating(false);
+        }
+      };
+      
+      handleCallback();
+    } else if (error && oidcEnabled) {
+      setAuthError(`Authentication error: ${error}`);
+    }
+    
+    // Handle regular URL parameters
     const apiKeyFromUrl = searchParams.get('key');
     if (apiKeyFromUrl) {
       setApiKey(apiKeyFromUrl);
@@ -58,7 +103,29 @@ export default function Home() {
     if (process.env.NODE_ENV == 'development') {
       setMessages(mockMessages);
     }
-  }, []);
+  }, [oidcEnabled]);
+
+  // Handle OIDC login
+  const handleOIDCLogin = async () => {
+    setIsAuthenticating(true);
+    setAuthError(null);
+    
+    try {
+      const authUrl = await generateAuthUrl();
+      window.location.href = authUrl;
+    } catch (error) {
+      console.error('OIDC login error:', error);
+      setAuthError(error instanceof Error ? error.message : 'Login failed');
+      setIsAuthenticating(false);
+    }
+  };
+
+  // Handle OIDC logout
+  const handleOIDCLogout = () => {
+    logoutOIDC();
+    // Force a re-render to update the UI
+    window.location.reload();
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -122,7 +189,13 @@ export default function Home() {
         'x-request-id': requestId,
       };
       
-      if (apiKey.trim()) {
+      // Use OIDC access token if available, otherwise fall back to API key
+      if (oidcEnabled) {
+        const accessToken = getAccessToken();
+        if (accessToken) {
+          headers['Authorization'] = `Bearer ${accessToken}`;
+        }
+      } else if (apiKey.trim()) {
         headers['Authorization'] = `Bearer ${apiKey.trim()}`;
       }
 
@@ -150,17 +223,33 @@ export default function Home() {
         const serverError = errorData.error || '';
         
         if (response.status === 401) {
-          if (serverError.includes('Authorization header required')) {
-            errorMessage = '🔑 API key required. Please enter your API key in the header above.';
-          } else if (serverError.includes('Invalid API key')) {
-            errorMessage = '🔑 Invalid API key. Please check your API key and try again.';
-          } else if (serverError.includes('Invalid authorization format')) {
-            errorMessage = '🔑 API key format error. This shouldn\'t happen - please refresh the page.';
+          if (oidcEnabled) {
+            if (serverError.includes('Authorization header required')) {
+              errorMessage = '🔑 Authentication required. Please login using the button above.';
+            } else if (serverError.includes('Invalid API key') || serverError.includes('Invalid token')) {
+              errorMessage = '🔑 Authentication expired. Please login again.';
+              // Clear the invalid token
+              if (oidcEnabled) {
+                logoutOIDC();
+              }
+            } else if (serverError.includes('Invalid authorization format')) {
+              errorMessage = '🔑 Authentication format error. Please login again.';
+            } else {
+              errorMessage = `🔑 Authentication failed: ${serverError}`;
+            }
           } else {
-            errorMessage = `🔑 Authentication failed: ${serverError}`;
+            if (serverError.includes('Authorization header required')) {
+              errorMessage = '🔑 API key required. Please enter your API key in the header above.';
+            } else if (serverError.includes('Invalid API key')) {
+              errorMessage = '🔑 Invalid API key. Please check your API key and try again.';
+            } else if (serverError.includes('Invalid authorization format')) {
+              errorMessage = '🔑 API key format error. This shouldn\'t happen - please refresh the page.';
+            } else {
+              errorMessage = `🔑 Authentication failed: ${serverError}`;
+            }
           }
         } else if (response.status === 400 && serverError.includes('Authorization')) {
-          errorMessage = `🔑 API key error: ${serverError}`;
+          errorMessage = `🔑 Authentication error: ${serverError}`;
         } else if (serverError) {
           errorMessage = `Error: ${serverError}`;
         } else {
@@ -343,21 +432,62 @@ export default function Home() {
               </button>
             </div>
 
-            {/* API Key Input */}
-            <div className="flex items-center gap-2">
-              <label htmlFor="api-key" className="text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
-                API Key:
-              </label>
-              <input
-                id="api-key"
-                type="password"
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                placeholder="API key"
-                className="px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent w-32 sm:w-40"
-                disabled={isLoading || (isStreamingEnabled && isStreaming)}
-              />
-            </div>
+            {/* Authentication Section */}
+            {oidcEnabled ? (
+              <div className="flex items-center gap-2">
+                {getAccessToken() ? (
+                  <button
+                    onClick={handleOIDCLogout}
+                    disabled={isLoading || (isStreamingEnabled && isStreaming)}
+                    className="px-3 py-1 text-sm font-medium text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 border border-red-300 dark:border-red-600 rounded-md hover:border-red-400 dark:hover:border-red-500 transition-colors duration-200 disabled:opacity-50"
+                    title="Logout"
+                  >
+                    <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                    <span className="hidden sm:inline">Logout</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleOIDCLogin}
+                    disabled={isLoading || (isStreamingEnabled && isStreaming) || isAuthenticating}
+                    className="px-3 py-1 text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 border border-blue-300 dark:border-blue-600 rounded-md hover:border-blue-400 dark:hover:border-blue-500 transition-colors duration-200 disabled:opacity-50"
+                    title="Login with OIDC"
+                  >
+                    {isAuthenticating ? (
+                      <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin inline mr-1"></div>
+                    ) : (
+                      <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                      </svg>
+                    )}
+                    <span className="hidden sm:inline">
+                      {isAuthenticating ? 'Logging in...' : 'Login'}
+                    </span>
+                  </button>
+                )}
+                {authError && (
+                  <div className="text-red-500 text-xs max-w-32 truncate" title={authError}>
+                    {authError}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <label htmlFor="api-key" className="text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
+                  API Key:
+                </label>
+                <input
+                  id="api-key"
+                  type="password"
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                  placeholder="API key"
+                  className="px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent w-32 sm:w-40"
+                  disabled={isLoading || (isStreamingEnabled && isStreaming)}
+                />
+              </div>
+            )}
 
             {/* Extra Parameters Menu */}
             {extraParams.length > 0 && <div className="relative">
@@ -436,6 +566,11 @@ export default function Home() {
               <div className="text-4xl mb-4">💬</div>
               <h2 className="text-2xl font-semibold mb-2">How can I help you today?</h2>
               <p>Start a conversation by typing a message below.</p>
+              {oidcEnabled && !getAccessToken() && (
+                <p className="text-sm mt-2 text-orange-600 dark:text-orange-400">
+                  🔑 Please login to start chatting
+                </p>
+              )}
               {selectedModel && (
                 <p className="text-sm mt-2">
                   Using model: <span className="font-mono font-semibold">{selectedModel}</span>
@@ -511,16 +646,22 @@ export default function Home() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyPress={handleKeyPress}
-                placeholder={isStreamingEnabled && isStreaming ? "AI is responding..." : "Type your message here..."}
+                placeholder={
+                  isStreamingEnabled && isStreaming 
+                    ? "AI is responding..." 
+                    : oidcEnabled && !getAccessToken()
+                    ? "Please login to start chatting..."
+                    : "Type your message here..."
+                }
                 className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
                 rows={1}
                 style={{ minHeight: '44px', maxHeight: '120px' }}
-                disabled={isLoading || (isStreamingEnabled && isStreaming)}
+                disabled={isLoading || (isStreamingEnabled && isStreaming) || (oidcEnabled && !getAccessToken())}
               />
             </div>
             <button
               onClick={sendMessage}
-              disabled={!input.trim() || isLoading || (isStreamingEnabled && isStreaming)}
+              disabled={!input.trim() || isLoading || (isStreamingEnabled && isStreaming) || (oidcEnabled && !getAccessToken())}
               className="px-6 py-3 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors duration-200 flex items-center space-x-2"
             >
               {isLoading || (isStreamingEnabled && isStreaming) ? (

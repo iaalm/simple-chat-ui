@@ -16,6 +16,11 @@ You can customize the chat bot's appearance by setting the following environment
 
 - `NEXT_PUBLIC_TITLE`: The title of the chat bot (defaults to "Chat bot")
 - `NEXT_PUBLIC_DESCRIPTION`: The description of the chat bot (defaults to "The chat bot")
+- `NEXT_PUBLIC_API_BASE`: The base URL for your API (e.g., "https://localhost:5000")
+- `NEXT_PUBLIC_EXTRA_PARAMETERS`: Additional parameters to send with requests (format: "Display Name:param_name=value;Display Name2:param_name2=value2")
+- `NEXT_PUBLIC_STREAM`: Enable streaming responses (set to "true" to enable)
+- `NEXT_PUBLIC_OIDC_ENDPOINT`: OIDC provider endpoint (e.g., "https://your-oidc-provider.com/.well-known/openid_configuration")
+- `NEXT_PUBLIC_OIDC_CLIENT_ID`: OIDC client ID for authentication
 
 Create a `.env.local` file in the root directory and add your custom values:
 
@@ -24,6 +29,9 @@ NEXT_PUBLIC_TITLE="My Custom Chat Bot"
 NEXT_PUBLIC_DESCRIPTION="A custom description for my chat bot"
 NEXT_PUBLIC_API_BASE="https://localhost:5000"
 NEXT_PUBLIC_EXTRA_PARAMETERS="Max Tokens:max_tokens=100;Temperature:temperature=0.7"
+NEXT_PUBLIC_STREAM="true"
+NEXT_PUBLIC_OIDC_ENDPOINT="https://your-oidc-provider.com/.well-known/openid_configuration"
+NEXT_PUBLIC_OIDC_CLIENT_ID="your-client-id"
 ```
 
 ### URL Parameters
@@ -37,6 +45,24 @@ Example URL with parameters:
 ```
 http://localhost:3000?key=your-api-key&model=model-name
 ```
+
+### OIDC Authentication
+
+When `NEXT_PUBLIC_OIDC_ENDPOINT` and `NEXT_PUBLIC_OIDC_CLIENT_ID` are configured, the chat interface will use OIDC authentication instead of API key input. The authentication flow uses Authorization Code Flow with PKCE for security.
+
+**Features:**
+- Automatic token management
+- Secure PKCE authentication flow
+- Built-in OIDC implementation (no external dependencies)
+- Fallback to API key if OIDC is not configured
+
+**Setup:**
+1. Configure your OIDC provider (e.g., Auth0, Keycloak, etc.)
+2. Set the redirect URI to `http://localhost:3000` (for development)
+3. Add the environment variables to your `.env.local` file
+4. The login/logout buttons will appear in the header
+
+**Note:** This implementation uses a simplified PKCE flow. For production use with strict security requirements, consider using a dedicated OIDC library.
 
 # Dev
 
