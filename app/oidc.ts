@@ -74,14 +74,14 @@ export const clearAccessToken = () => {
 
 // Check if OIDC is configured
 export const isOIDCConfigured = (): boolean => {
-  return !!(process.env.NEXT_PUBLIC_OIDC_ENDPOINT && process.env.NEXT_PUBLIC_OIDC_CLIENT_ID);
+  return !!process.env.NEXT_PUBLIC_OIDC_ENDPOINT;
 };
 
 // Get OIDC configuration
 export const getOIDCConfig = () => {
   return {
     endpoint: process.env.NEXT_PUBLIC_OIDC_ENDPOINT!,
-    clientId: process.env.NEXT_PUBLIC_OIDC_CLIENT_ID!,
+    clientId: process.env.NEXT_PUBLIC_OIDC_CLIENT_ID || undefined,
   };
 };
 
@@ -112,7 +112,6 @@ export const generateAuthUrl = async (): Promise<string> => {
     
     // Build authorization URL
     const params = new URLSearchParams({
-      client_id: clientId,
       response_type: 'code',
       scope: 'openid',
       code_challenge: codeChallenge,
@@ -120,6 +119,11 @@ export const generateAuthUrl = async (): Promise<string> => {
       state,
       redirect_uri: window.location.origin + window.location.pathname,
     });
+    
+    // Add client_id only if provided
+    if (clientId) {
+      params.append('client_id', clientId);
+    }
     
     return `${config.authorization_endpoint}?${params.toString()}`;
   } catch (error) {
@@ -151,18 +155,24 @@ export const handleOIDCCallback = async (code: string, state: string): Promise<s
     const config = await response.json();
     
     // Exchange code for token
+    const tokenParams = new URLSearchParams({
+      grant_type: 'authorization_code',
+      code,
+      code_verifier: codeVerifier,
+      redirect_uri: window.location.origin + window.location.pathname,
+    });
+    
+    // Add client_id only if provided
+    if (clientId) {
+      tokenParams.append('client_id', clientId);
+    }
+    
     const tokenResponse = await fetch(config.token_endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: new URLSearchParams({
-        grant_type: 'authorization_code',
-        client_id: clientId,
-        code,
-        code_verifier: codeVerifier,
-        redirect_uri: window.location.origin + window.location.pathname,
-      }),
+      body: tokenParams,
     });
     
     if (!tokenResponse.ok) {
