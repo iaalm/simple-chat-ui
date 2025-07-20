@@ -82,6 +82,7 @@ export const getOIDCConfig = () => {
   return {
     endpoint: process.env.NEXT_PUBLIC_OIDC_ENDPOINT!,
     clientId: process.env.NEXT_PUBLIC_OIDC_CLIENT_ID || undefined,
+    scope: process.env.NEXT_PUBLIC_OIDC_SCOPE || "openid"
   };
 };
 
@@ -94,7 +95,7 @@ const generateState = () => {
 
 // Generate authorization URL
 export const generateAuthUrl = async (): Promise<string> => {
-  const { endpoint, clientId } = getOIDCConfig();
+  const { endpoint, clientId, scope } = getOIDCConfig();
   
   try {
     // Discover OIDC configuration
@@ -134,7 +135,7 @@ export const generateAuthUrl = async (): Promise<string> => {
 
 // Handle OIDC callback and exchange code for token
 export const handleOIDCCallback = async (code: string, state: string): Promise<string> => {
-  const { endpoint, clientId } = getOIDCConfig();
+  const { endpoint, clientId, scope } = getOIDCConfig();
   const { state: storedState, codeVerifier } = getPKCEState();
   
   if (!storedState || !codeVerifier) {
@@ -160,6 +161,7 @@ export const handleOIDCCallback = async (code: string, state: string): Promise<s
       code,
       code_verifier: codeVerifier,
       redirect_uri: window.location.origin + window.location.pathname,
+      scope: scope
     });
     
     // Add client_id only if provided

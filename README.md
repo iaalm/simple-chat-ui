@@ -21,6 +21,7 @@ You can customize the chat bot's appearance by setting the following environment
 - `NEXT_PUBLIC_STREAM`: Enable streaming responses (set to "true" to enable)
 - `NEXT_PUBLIC_OIDC_ENDPOINT`: OIDC provider endpoint (e.g., "https://your-oidc-provider.com/.well-known/openid_configuration")
 - `NEXT_PUBLIC_OIDC_CLIENT_ID`: OIDC client ID for authentication
+- `NEXT_PUBLIC_OIDC_SCOPE`: OIDC scope for authentication
 
 Create a `.env.local` file in the root directory and add your custom values:
 
