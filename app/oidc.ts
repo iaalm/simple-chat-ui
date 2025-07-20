@@ -113,7 +113,7 @@ export const generateAuthUrl = async (): Promise<string> => {
     // Build authorization URL
     const params = new URLSearchParams({
       response_type: 'code',
-      scope: 'openid',
+      scope: 'openid profile offline_access',
       code_challenge: codeChallenge,
       code_challenge_method: 'S256',
       state,
