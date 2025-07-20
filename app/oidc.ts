@@ -95,7 +95,7 @@ const generateState = () => {
 
 // Generate authorization URL
 export const generateAuthUrl = async (): Promise<string> => {
-  const { endpoint, clientId } = getOIDCConfig();
+  const { endpoint, clientId, scope } = getOIDCConfig();
   
   try {
     // Discover OIDC configuration
@@ -114,7 +114,7 @@ export const generateAuthUrl = async (): Promise<string> => {
     // Build authorization URL
     const params = new URLSearchParams({
       response_type: 'code',
-      scope: 'openid profile offline_access',
+      scope: scope,
       code_challenge: codeChallenge,
       code_challenge_method: 'S256',
       state,
