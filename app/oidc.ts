@@ -82,7 +82,7 @@ export const getOIDCConfig = () => {
   return {
     endpoint: process.env.NEXT_PUBLIC_OIDC_ENDPOINT!,
     clientId: process.env.NEXT_PUBLIC_OIDC_CLIENT_ID || undefined,
-    scope: process.env.NEXT_PUBLIC_OIDC_SCOPE || "openid"
+    scope: process.env.NEXT_PUBLIC_OIDC_SCOPE || "openid",
   };
 };
 
@@ -95,7 +95,7 @@ const generateState = () => {
 
 // Generate authorization URL
 export const generateAuthUrl = async (): Promise<string> => {
-  const { endpoint, clientId, scope } = getOIDCConfig();
+  const { endpoint, clientId } = getOIDCConfig();
   
   try {
     // Discover OIDC configuration
