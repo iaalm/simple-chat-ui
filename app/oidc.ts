@@ -114,7 +114,9 @@ export const generateAuthUrl = async (): Promise<string> => {
     // Build authorization URL
     const params = new URLSearchParams({
       response_type: 'code',
+      // some auth provider use audience while some use scope, so we need to add both
       scope: scope,
+      audience: scope,
       code_challenge: codeChallenge,
       code_challenge_method: 'S256',
       state,
@@ -161,7 +163,9 @@ export const handleOIDCCallback = async (code: string, state: string): Promise<s
       code,
       code_verifier: codeVerifier,
       redirect_uri: window.location.origin + window.location.pathname,
-      scope: scope
+      // some auth provider use audience while some use scope, so we need to add both
+      scope: scope,
+      audience: scope,
     });
     
     // Add client_id only if provided
