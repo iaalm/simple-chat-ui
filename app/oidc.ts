@@ -205,8 +205,8 @@ export const handleOIDCCallback = async (code: string, state: string): Promise<s
   }
 };
 
-export const redirectToOIDCLogout = async () => {
-  const { endpoint } = getOIDCConfig();
+export const oidcLogout = async () => {
+  const { endpoint, clientId } = getOIDCConfig();
   try {
     // Discover OIDC configuration
     const response = await fetch(endpoint);
@@ -216,9 +216,17 @@ export const redirectToOIDCLogout = async () => {
     
     const config = await response.json();
 
+    
+    const logout_params = new URLSearchParams({
+      returnTo: window.location.origin + window.location.pathname,
+    });
+    if (clientId) {
+      logout_params.append('client_id', clientId);
+    }
+
     const logout_url = config.end_session_endpoint;
     if (logout_url) {
-      window.location.href = logout_url;
+      window.location.href = logout_url + "?" + logout_params.toString();
     }
     else {
       console.warn("Auth provider does not support logout endpoint");
@@ -229,8 +237,7 @@ export const redirectToOIDCLogout = async () => {
 }
 
 // Logout function
-export const logoutOIDC = async () => {
+export const clearSessionStorage = () => {
   clearAccessToken();
   clearPKCEState();
-  await redirectToOIDCLogout();
 }; 

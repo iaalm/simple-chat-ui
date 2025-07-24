@@ -9,7 +9,8 @@ import {
   isOIDCConfigured, 
   generateAuthUrl, 
   getAccessToken, 
-  logoutOIDC,
+  clearSessionStorage,
+  oidcLogout,
   handleOIDCCallback
 } from './oidc';
 
@@ -122,9 +123,8 @@ export default function Home() {
 
   // Handle OIDC logout
   const handleOIDCLogout = async () => {
-    await logoutOIDC();
-    // Force a re-render to update the UI
-    window.location.reload();
+    clearSessionStorage();
+    await oidcLogout();
   };
 
   const scrollToBottom = () => {
@@ -230,7 +230,7 @@ export default function Home() {
               errorMessage = '🔑 Authentication expired. Please login again.';
               // Clear the invalid token
               if (oidcEnabled) {
-                logoutOIDC();
+                clearSessionStorage();
               }
             } else if (serverError.includes('Invalid authorization format')) {
               errorMessage = '🔑 Authentication format error. Please login again.';
