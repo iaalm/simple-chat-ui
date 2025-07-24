@@ -220,6 +220,9 @@ export const redirectToOIDCLogout = async () => {
     if (logout_url) {
       window.location.href = logout_url;
     }
+    else {
+      console.warn("Auth provider does not support logout endpoint");
+    }
   } catch (error) {
     console.error('Error fetching OIDC configuration:', error);
   }
