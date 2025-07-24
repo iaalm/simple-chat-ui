@@ -9,7 +9,7 @@ import {
   isOIDCConfigured, 
   generateAuthUrl, 
   getAccessToken, 
-  logout as logoutOIDC,
+  logoutOIDC,
   handleOIDCCallback
 } from './oidc';
 
@@ -121,8 +121,8 @@ export default function Home() {
   };
 
   // Handle OIDC logout
-  const handleOIDCLogout = () => {
-    logoutOIDC();
+  const handleOIDCLogout = async () => {
+    await logoutOIDC();
     // Force a re-render to update the UI
     window.location.reload();
   };

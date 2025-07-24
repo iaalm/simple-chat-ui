@@ -205,8 +205,29 @@ export const handleOIDCCallback = async (code: string, state: string): Promise<s
   }
 };
 
+export const redirectToOIDCLogout = async () => {
+  const { endpoint } = getOIDCConfig();
+  try {
+    // Discover OIDC configuration
+    const response = await fetch(endpoint);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch OIDC configuration: ${response.status}`);
+    }
+    
+    const config = await response.json();
+
+    const logout_url = config.end_session_endpoint;
+    if (logout_url) {
+      window.location.href = logout_url;
+    }
+  } catch (error) {
+    console.error('Error fetching OIDC configuration:', error);
+  }
+}
+
 // Logout function
-export const logout = () => {
+export const logoutOIDC = async () => {
   clearAccessToken();
   clearPKCEState();
+  await redirectToOIDCLogout();
 }; 
