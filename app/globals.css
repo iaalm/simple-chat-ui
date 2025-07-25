@@ -150,6 +150,55 @@ body {
   border-radius: 0;
 }
 
+/* List styling */
+.message ul,
+.message ol {
+  margin: 1rem 0;
+  padding-left: 1.5rem;
+}
+
+.message ul {
+  list-style-type: disc;
+}
+
+.message ol {
+  list-style-type: decimal;
+}
+
+.message li {
+  margin-bottom: 0.5rem;
+  line-height: 1.6;
+}
+
+.message li:last-child {
+  margin-bottom: 0;
+}
+
+/* Nested lists */
+.message ul ul,
+.message ol ol,
+.message ul ol,
+.message ol ul {
+  margin: 0.5rem 0;
+}
+
+.message ul ul {
+  list-style-type: circle;
+}
+
+.message ul ul ul {
+  list-style-type: square;
+}
+
+.message ol ol {
+  list-style-type: lower-alpha;
+}
+
+.message ol ol ol {
+  list-style-type: lower-roman;
+}
+
 .message .reasoning {
   margin-bottom: 1rem;
 }
+

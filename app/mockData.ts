@@ -64,6 +64,29 @@ python -m pip install pandas[plotting]
 - [X] install pandas
 - [ ] install matplotlib
 - [ ] install seaborn
+
+# My List
+
+- First bullet point
+  - First sub-item
+  - Second sub-item
+    - First sub-sub-item
+    - Second sub-sub-item
+- Second bullet point
+  a. First sub-item
+  b. Second sub-item
+- Third bullet point
+
+## Numbered List
+
+1. First item
+   - First sub-item
+   - Second sub-item
+2. Second item
+   1. First sub-item
+   2. Second sub-item
+3. Third item
+4. Fourth item
 `
     },
 ]
