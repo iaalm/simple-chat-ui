@@ -9,6 +9,7 @@ import {
   isOIDCConfigured, 
   generateAuthUrl, 
   getAccessToken, 
+  getAccessTokenSync,
   clearSessionStorage,
   oidcLogout,
   handleOIDCCallback
@@ -191,7 +192,7 @@ export default function Home() {
       
       // Use OIDC access token if available, otherwise fall back to API key
       if (oidcEnabled) {
-        const accessToken = getAccessToken();
+        const accessToken = await getAccessToken();
         if (accessToken) {
           headers['Authorization'] = `Bearer ${accessToken}`;
         }
@@ -435,7 +436,7 @@ export default function Home() {
             {/* Authentication Section */}
             {oidcEnabled ? (
               <div className="flex items-center gap-2">
-                {getAccessToken() ? (
+                {getAccessTokenSync() ? (
                   <button
                     onClick={handleOIDCLogout}
                     disabled={isLoading || (isStreamingEnabled && isStreaming)}
@@ -566,7 +567,7 @@ export default function Home() {
               <div className="text-4xl mb-4">💬</div>
               <h2 className="text-2xl font-semibold mb-2">How can I help you today?</h2>
               <p>Start a conversation by typing a message below.</p>
-              {oidcEnabled && !getAccessToken() && (
+              {oidcEnabled && !getAccessTokenSync() && (
                 <p className="text-sm mt-2 text-orange-600 dark:text-orange-400">
                   🔑 Please login to start chatting
                 </p>
@@ -649,19 +650,19 @@ export default function Home() {
                 placeholder={
                   isStreamingEnabled && isStreaming 
                     ? "AI is responding..." 
-                    : oidcEnabled && !getAccessToken()
+                    : oidcEnabled && !getAccessTokenSync()
                     ? "Please login to start chatting..."
                     : "Type your message here..."
                 }
                 className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
                 rows={1}
                 style={{ minHeight: '44px', maxHeight: '120px' }}
-                disabled={isLoading || (isStreamingEnabled && isStreaming) || (oidcEnabled && !getAccessToken())}
+                disabled={isLoading || (isStreamingEnabled && isStreaming) || (oidcEnabled && !getAccessTokenSync())}
               />
             </div>
             <button
               onClick={sendMessage}
-              disabled={!input.trim() || isLoading || (isStreamingEnabled && isStreaming) || (oidcEnabled && !getAccessToken())}
+              disabled={!input.trim() || isLoading || (isStreamingEnabled && isStreaming) || (oidcEnabled && !getAccessTokenSync())}
               className="px-6 py-3 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors duration-200 flex items-center space-x-2"
             >
               {isLoading || (isStreamingEnabled && isStreaming) ? (
