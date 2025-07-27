@@ -12,7 +12,8 @@ import {
   getAccessTokenSync,
   clearSessionStorage,
   oidcLogout,
-  handleOIDCCallback
+  handleOIDCCallback,
+  isAuthenticated
 } from './oidc';
 
 // Generate a random GUID
@@ -66,7 +67,9 @@ export default function Home() {
     const state = searchParams.get('state');
     const error = searchParams.get('error');
     
-    if (code && state && oidcEnabled) {
+    if (oidcEnabled && !code && !error && !isAuthenticated()) {
+      handleOIDCLogin();
+    } else if (code && state && oidcEnabled) {
       // Handle OIDC callback
       const handleCallback = async () => {
         setIsAuthenticating(true);
