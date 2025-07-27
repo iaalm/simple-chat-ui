@@ -7,13 +7,14 @@ import { Message, Model, ExtraParameter } from './types';
 import { mockMessages } from './mockData';
 import { 
   isOIDCConfigured, 
-  generateAuthUrl, 
+  redirectToLogin, 
   getAccessToken, 
   getAccessTokenSync,
   clearSessionStorage,
   oidcLogout,
   handleOIDCCallback,
-  isAuthenticated
+  isAuthenticated,
+  getAuthenticating
 } from './oidc';
 
 // Generate a random GUID
@@ -67,7 +68,7 @@ export default function Home() {
     const state = searchParams.get('state');
     const error = searchParams.get('error');
     
-    if (oidcEnabled && !code && !error && !isAuthenticated()) {
+    if (oidcEnabled && !code && !error && !isAuthenticated() && !getAuthenticating()) {
       handleOIDCLogin();
     } else if (code && state && oidcEnabled) {
       // Handle OIDC callback
@@ -116,8 +117,7 @@ export default function Home() {
     setAuthError(null);
     
     try {
-      const authUrl = await generateAuthUrl();
-      window.location.href = authUrl;
+      await redirectToLogin();
     } catch (error) {
       console.error('OIDC login error:', error);
       setAuthError(error instanceof Error ? error.message : 'Login failed');

@@ -228,8 +228,7 @@ export const getAccessToken = async (): Promise<string | null> => {
       } else {
         // Refresh failed, redirect to login
         console.log('Token refresh failed, redirecting to login...');
-        const authUrl = await generateAuthUrl();
-        window.location.href = authUrl;
+        await redirectToLogin();
         return null;
       }
     }
@@ -294,7 +293,7 @@ const generateState = () => {
 };
 
 // Generate authorization URL
-export const generateAuthUrl = async (): Promise<string> => {
+const generateAuthUrl = async (): Promise<string> => {
   const { endpoint, clientId, scope, audience } = getOIDCConfig();
   
   try {
@@ -333,6 +332,12 @@ export const generateAuthUrl = async (): Promise<string> => {
     console.error('Error generating auth URL:', error);
     throw new Error('Failed to generate authorization URL');
   }
+};
+
+export const redirectToLogin = async () => {
+  setAuthenticating(true);
+  const authUrl = await generateAuthUrl();
+  window.location.href = authUrl;
 };
 
 // Handle OIDC callback and exchange code for token
@@ -397,6 +402,8 @@ export const handleOIDCCallback = async (code: string, state: string): Promise<s
     
     // Clear PKCE state
     clearPKCEState();
+
+    setAuthenticating(false);
     
     return tokenSet.access_token;
   } catch (error) {
@@ -441,4 +448,17 @@ export const clearSessionStorage = () => {
   clearAccessToken();
   clearPKCEState();
   clearRefreshToken();
-}; 
+};
+
+export const setAuthenticating = (isAuthenticating: boolean) => {
+  if (typeof window !== 'undefined') {
+    sessionStorage.setItem('oidc_authenticating', isAuthenticating.toString());
+  }
+};
+
+export const getAuthenticating = (): boolean => {
+  if (typeof window !== 'undefined') {
+    return sessionStorage.getItem('oidc_authenticating') === 'true';
+  }
+  return false;
+};
