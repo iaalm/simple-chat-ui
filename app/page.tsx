@@ -140,8 +140,22 @@ export default function Home() {
   }, [messages]);
 
   const fetchModels = useCallback(async () => {
+    const requestId = generateGuid();
+
     try {
-      const response = await fetch('/v1/models');
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+        'x-request-id': requestId,
+      };
+      if (oidcEnabled) {
+        const accessToken = await getAccessToken();
+        if (accessToken) {
+          headers['Authorization'] = `Bearer ${accessToken}`;
+        }
+      } else if (apiKey.trim()) {
+        headers['Authorization'] = `Bearer ${apiKey.trim()}`;
+      }
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE || ''}/v1/models`, { headers });
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
