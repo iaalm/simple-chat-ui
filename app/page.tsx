@@ -173,7 +173,7 @@ export default function Home() {
     } finally {
       setIsLoadingModels(false);
     }
-  }, [selectedModel]);
+  }, [selectedModel, apiKey, oidcEnabled]);
 
   // Fetch available models on component mount
   useEffect(() => {
