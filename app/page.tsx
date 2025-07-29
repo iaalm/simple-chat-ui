@@ -95,12 +95,16 @@ export default function Home() {
     } else if (error && oidcEnabled) {
       setAuthError(`Authentication error: ${error}`);
     }
-    
-    // Handle regular URL parameters
-    const apiKeyFromUrl = searchParams.get('key');
-    if (apiKeyFromUrl) {
-      setApiKey(apiKeyFromUrl);
+    else {
+      // Handle regular URL parameters
+      const apiKeyFromUrl = searchParams.get('key');
+      if (apiKeyFromUrl) {
+        setApiKey(apiKeyFromUrl);
+      }
     }
+
+    fetchModels();
+
     const model = searchParams.get('model');
     if (model) {
       setSelectedModel(model);
@@ -174,11 +178,6 @@ export default function Home() {
       setIsLoadingModels(false);
     }
   }, [selectedModel, apiKey, oidcEnabled]);
-
-  // Fetch available models on component mount
-  useEffect(() => {
-    fetchModels();
-  }, [fetchModels]);
 
   const sendMessage = async () => {
     if (!input.trim() || isLoading || isStreaming) return;
