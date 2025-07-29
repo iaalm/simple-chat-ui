@@ -59,6 +59,42 @@ export default function Home() {
   // Check if streaming is enabled
   const isStreamingEnabled = process.env.NEXT_PUBLIC_STREAM === 'true';
 
+  const fetchModels = useCallback(async () => {
+    const requestId = generateGuid();
+
+    try {
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+        'x-request-id': requestId,
+      };
+      if (oidcEnabled) {
+        const accessToken = await getAccessToken();
+        if (accessToken) {
+          headers['Authorization'] = `Bearer ${accessToken}`;
+        }
+      } else if (apiKey.trim()) {
+        headers['Authorization'] = `Bearer ${apiKey.trim()}`;
+      }
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE || ''}/v1/models`, { headers });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      setModels(data.data || []);
+      // Only set model if not set or current model doesn't exist in list
+      if (data.data && data.data.length > 0) {
+        const modelIds = data.data.map((model: Model) => model.id);
+        if (!selectedModel || !modelIds.includes(selectedModel)) {
+          setSelectedModel(data.data[0].id);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching models:', error);
+    } finally {
+      setIsLoadingModels(false);
+    }
+  }, [selectedModel, apiKey, oidcEnabled]);
+  
   // Read API key from URL and handle OIDC callback on component mount
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
@@ -113,7 +149,7 @@ export default function Home() {
     if (process.env.NODE_ENV == 'development') {
       setMessages(mockMessages);
     }
-  }, [oidcEnabled]);
+  }, [oidcEnabled, fetchModels ]);
 
   // Handle OIDC login
   const handleOIDCLogin = async () => {
@@ -143,41 +179,6 @@ export default function Home() {
     scrollToBottom();
   }, [messages]);
 
-  const fetchModels = useCallback(async () => {
-    const requestId = generateGuid();
-
-    try {
-      const headers: HeadersInit = {
-        'Content-Type': 'application/json',
-        'x-request-id': requestId,
-      };
-      if (oidcEnabled) {
-        const accessToken = await getAccessToken();
-        if (accessToken) {
-          headers['Authorization'] = `Bearer ${accessToken}`;
-        }
-      } else if (apiKey.trim()) {
-        headers['Authorization'] = `Bearer ${apiKey.trim()}`;
-      }
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE || ''}/v1/models`, { headers });
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const data = await response.json();
-      setModels(data.data || []);
-      // Only set model if not set or current model doesn't exist in list
-      if (data.data && data.data.length > 0) {
-        const modelIds = data.data.map((model: Model) => model.id);
-        if (!selectedModel || !modelIds.includes(selectedModel)) {
-          setSelectedModel(data.data[0].id);
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching models:', error);
-    } finally {
-      setIsLoadingModels(false);
-    }
-  }, [selectedModel, apiKey, oidcEnabled]);
 
   const sendMessage = async () => {
     if (!input.trim() || isLoading || isStreaming) return;
