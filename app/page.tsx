@@ -94,7 +94,7 @@ export default function Home() {
       setIsLoadingModels(false);
     }
   }, [selectedModel, apiKey, oidcEnabled]);
-  
+
   // Read API key from URL and handle OIDC callback on component mount
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
@@ -104,11 +104,11 @@ export default function Home() {
     const state = searchParams.get('state');
     const error = searchParams.get('error');
     
-    if (oidcEnabled && !code && !error && !isAuthenticated() && !getAuthenticating()) {
-      handleOIDCLogin();
-    } else if (code && state && oidcEnabled) {
       // Handle OIDC callback
-      const handleCallback = async () => {
+    const handleCallback = async () => {
+      if (oidcEnabled && !code && !error && !isAuthenticated() && !getAuthenticating()) {
+        handleOIDCLogin();
+      } else if (code && state && oidcEnabled) {
         setIsAuthenticating(true);
         setAuthError(null);
         
@@ -125,26 +125,26 @@ export default function Home() {
         } finally {
           setIsAuthenticating(false);
         }
-      };
-      
-      handleCallback();
-    } else if (error && oidcEnabled) {
-      setAuthError(`Authentication error: ${error}`);
-    }
-    else {
-      // Handle regular URL parameters
-      const apiKeyFromUrl = searchParams.get('key');
-      if (apiKeyFromUrl) {
-        setApiKey(apiKeyFromUrl);
+      } else if (error && oidcEnabled) {
+        setAuthError(`Authentication error: ${error}`);
       }
-    }
+      else {
+        // Handle regular URL parameters
+        const apiKeyFromUrl = searchParams.get('key');
+        if (apiKeyFromUrl) {
+          setApiKey(apiKeyFromUrl);
+        }
+      }
+  
+      await fetchModels();
+  
+      const model = searchParams.get('model');
+      if (model) {
+        setSelectedModel(model);
+      }
+    };
 
-    fetchModels();
-
-    const model = searchParams.get('model');
-    if (model) {
-      setSelectedModel(model);
-    }
+    handleCallback();
 
     if (process.env.NODE_ENV == 'development') {
       setMessages(mockMessages);
