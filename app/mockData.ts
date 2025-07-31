@@ -54,6 +54,12 @@ python -m pip install pandas[plotting]
 
 # H1 title
 
+**bold text**
+
+_italic text_
+
+~~strikethrough text~~
+
 ## H2 title
 
 ### H3 title
@@ -61,6 +67,9 @@ python -m pip install pandas[plotting]
 #### H4 title
 
 ##### H5 title
+
+--------------
+
 
 ## check list
 
